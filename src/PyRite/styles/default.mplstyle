@@ -1,0 +1,5 @@
+figure.figsize : 8, 6
+font.size : 14
+axes.grid : True
+axes.spines.top : False
+axes.spines.right : False
