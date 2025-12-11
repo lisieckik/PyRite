@@ -18,11 +18,11 @@ Homepage = "https://github.com/lisieckik/PyRite"
 Repository = "https://github.com/lisieckik/PyRite"
 
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
-"PyRite.styles" = ["*.mplstyle"]
+"pyrite.styles" = ["*.mplstyle"]
