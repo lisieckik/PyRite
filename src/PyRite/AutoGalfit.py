@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from subprocess import Popen, PIPE
 import sep
 from matplotlib.patches import Ellipse
+from .otherUseful import *
 
 class AutoGalfitClass:
     def __init__(self, imagePath, zeropoint, fitObjects = [], psfFile = 'PSF.fits',
@@ -111,7 +112,7 @@ class AutoGalfitClass:
         :return:
         """
         self.__workingDirectory = workingDirPath
-        if not os.path.exists(workingDirPath):
+        if self.__workingDirectory != "" and not os.path.exists(workingDirPath):
             os.mkdir(workingDirPath)
         if workingDirPath != "":
             shutil.copy2(self.imagePath, "%s%s"%(self.__workingDirectory, self.imagePath))
@@ -167,14 +168,24 @@ class AutoGalfitClass:
         """
         self.prepFeedmeFile()
         proc = self.galfitPath + " galfit.feedme"
-        process = Popen(proc, stdout=PIPE, stderr=PIPE, shell=True, cwd='%s' %self.__workingDirectory)
+        if self.__workingDirectory != "":
+            process = Popen(proc, stdout=PIPE, stderr=PIPE, shell=True, cwd='%s' %self.__workingDirectory)
+        else:
+            process = Popen(proc, stdout=PIPE, stderr=PIPE, shell=True)
+
         stdout, stderr = process.communicate()
 
         chi2, res = ReadResults("%sgalfit.01"%self.__workingDirectory)
         __, inp = ReadResults("%sgalfit.feedme"%self.__workingDirectory)
 
-        if not os.path.exists('%s%s' %(self.__workingDirectory, parameterOutputFile)) or runID == -99:
-            resultFile = open('%s%s' %(self.__workingDirectory, parameterOutputFile), 'w')
+
+        if self.__workingDirectory != "":
+            resultFile = '%s%s' %(self.__workingDirectory, parameterOutputFile)
+        else:
+            resultFile = '%s' %(parameterOutputFile)
+            
+        if not os.path.exists(resultFile) or runID == -99:
+            resultFile = open(resultFile, 'w')
 
             resultFile.write("# runID chi2")
             for k in inp.keys():
@@ -194,7 +205,7 @@ class AutoGalfitClass:
                         resultFile.write(" circuralizedRe_%i_out"%(k))
             resultFile.write('\n')
         else:
-            resultFile = open('%s%s' %(self.__workingDirectory, parameterOutputFile), 'a')
+            resultFile = open(resultFile, 'a')
 
 
 
@@ -275,10 +286,16 @@ class AutoGalfitClass:
         """
         try:
             os.remove('%s%s' %(self.__workingDirectory, parameterOutputFile))
-        except:pass
+        except Exception as err:
+            print(err)
 
         if saveModels:
-            os.mkdir('%s%s' %(self.__workingDirectory, 'models'))
+            if self.__workingDirectory == "":
+                if not os.path.exists('%s' %('models')):
+                    os.mkdir('%s' %('models'))
+            else:
+                if not os.path.exists('%s%s' %(self.__workingDirectory, 'models')):
+                    os.mkdir('%s%s' %(self.__workingDirectory, 'models'))
         for i in range(n):
             if np.round(i/n,4)*100 % 10 == 0:
                 print(np.round(i/n,2)*100, "% Done")
@@ -289,8 +306,9 @@ class AutoGalfitClass:
             except:
                 pass
             if saveModels:
-                shutil.copy2('%s%s' %(self.__workingDirectory, outputFile), '%smodels/%s' %(self.__workingDirectory, outputFile))
-                shutil.copy2('%s%iresult.png'%(self.__workingDirectory, abs(n)), '%smodels/%iresult.png'%(self.__workingDirectory, abs(n)))
+                shutil.copy2('%s%s' %(self.__workingDirectory, self.outputFile), '%smodels/%i_%s' %(self.__workingDirectory, i, self.outputFile))
+                shutil.copy2('%s%iresult.png'%(self.__workingDirectory, abs(i)), '%smodels/%iresult.png'%(self.__workingDirectory, abs(i)))
+                os.remove('%s%iresult.png'%(self.__workingDirectory, abs(i)))
     def prepareAuxFiles(self, ap = 3, substractBKG = True):
         """
         This functions prepares sigma image, mask
@@ -325,7 +343,8 @@ class AutoGalfitClass:
                     mask.write('%i %i\n' % (i, j))
         mask.close()
         self.maskFile = 'maskQS.txt'
-        self.setWorkingDir(self.__workingDirectory)
+        if self.__workingDirectory != "":
+            self.setWorkingDir(self.__workingDirectory)
     def prepareConsFile(self, consName='consQS.txt'):
         """
         This method prepares the the constrains file. Removes the previous one if exists!
