@@ -91,11 +91,12 @@ def MeridaMS(logM, z):
     logSFR = betaInterp*logM + alphaInterp
     return logSFR
 
-def PopessoMS(logM, z):
+def PopessoMS(logM, z, IMF = 'C'):
     """
     Give mass and redshift, get SFR
-    :param M: Log(Mass) in solar masses
+    :param logM: Mass in solar masses
     :param z: Redshift
+    :param IMF: C for chabrier, S for Salpeter, K for Kroupa
     :return: Log(SFR) in solar masses/yr
     """
     a0 = 2.71
@@ -105,14 +106,25 @@ def PopessoMS(logM, z):
 
 
     age = cosmo.age(z).value
-    logSFR = a0 + a1*age -np.log10(1 + 1/(10**logM/10**(a2+a3*age)))
-    return logSFR
 
-def KoprowskiMS(logM, z):
+    logSFR = a0 + a1*age -np.log10(1 + 1/(10**logM/10**(a2+a3*age)))
+    if IMF == 'K':
+        return logSFR
+    logSFR = np.log10(10**logSFR/0.67)
+    if IMF == 'S':
+        return logSFR
+    logSFR = np.log10(10 ** logSFR*0.63)
+    if IMF == 'C':
+        return logSFR
+
+    raise ValueError('Wrong IMF type!')
+
+def KoprowskiMS(logM, z, IMF = 'C'):
     """
     Give mass and redshift, get SFR
     :param M: Log(Mass) in solar masses
     :param z: Redshift
+    :param IMF: C for chabrier, S for Salpeter, K for Kroupa
     :return: Log(SFR) in solar masses/yr
     """
     a1 = 2.97
@@ -126,15 +138,18 @@ def KoprowskiMS(logM, z):
     M0 = 10**(b1 + b2*np.exp(-b3*z))
 
     SFR = sfrMax/(1+M0/10**logM)
-    SFR = np.log10(SFR)
-    return SFR
+    logSFR = np.log10(SFR)
+    if IMF == 'C':
+        return logSFR
+    ValueError('Wrong IMF type! Write it you lazy dong!')
 
-def PacificiMS(logM, z, QGLim = False):
+def PacificiMS(logM, z, QGLim = False, IMF = 'C'):
     """
     Give mass and redshift, get SFR
     :param M: Log(Mass) in solar masses
     :param z: Redshift
     :param QGLim: if True, returns limit for quiescence
+    :param IMF: C for chabrier, S for Salpeter, K for Kroupa
     :return: Log(SFR) in solar masses/yr
     """
     cosmicAge = cosmo.age(z).value
@@ -143,4 +158,7 @@ def PacificiMS(logM, z, QGLim = False):
     else:
         tau = np.log10(1 / (cosmicAge * 1e9))
     logSFR = tau+logM
-    return logSFR
+
+    if IMF == 'C':
+        return logSFR
+    ValueError('Wrong IMF type! Write it you lazy dong!')
