@@ -10,7 +10,9 @@ requires-python = ">=3.10"
 dependencies = [
     "matplotlib",
     "numpy",
-    "astropy"
+    "astropy",
+    "sep",
+    "shutil"
 ]
 
 [project.urls]
