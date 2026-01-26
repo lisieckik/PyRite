@@ -286,8 +286,6 @@ class AutoGalfitClass:
         """
         try:
             os.remove('%s%s' %(self.__workingDirectory, parameterOutputFile))
-        except Exception as err:
-            print(err)
 
         if saveModels:
             if self.__workingDirectory == "":
