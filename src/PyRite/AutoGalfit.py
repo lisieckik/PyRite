@@ -6,13 +6,15 @@ from subprocess import Popen, PIPE
 import sep
 from matplotlib.patches import Ellipse
 from .otherUseful import *
+from .cosmologyRelated import cosmo
 
 class AutoGalfitClass:
     def __init__(self, imagePath, zeropoint, fitObjects = [], psfFile = 'PSF.fits',
                  ext = 1, dx = -1,
                  outputFile = "model.fits", sigmaFile = "none",
                  maskFile = "none",consFile = "none", imageRegion = [-1],
-                 sizeConvolution = [-1], optimize = True, circuralizedRe = True):
+                 sizeConvolution = [-1], optimize = True, circuralizedRe = True,
+                 redshift = -99):
         """
         :param imagePath: path to the image (in the same directory)
         :param zeropoint: value of zeropoint
@@ -47,7 +49,13 @@ class AutoGalfitClass:
                 self.dx = abs(self.header['CD1_1'])*3600
             except:
                 raise Exception("You need to specify pixelSize!")
-
+        else:
+            self.dx = dx
+        
+        self.redshift = redshift
+        if redshift >0:
+            self.D_A = cosmo.arcsec_per_kpc_proper(redshift)
+        
         self.outputFile = outputFile
         self.sigmaFile = sigmaFile
         self.psfFile = psfFile
@@ -62,8 +70,7 @@ class AutoGalfitClass:
         else:
             self.sizeConvolution = sizeConvolution
         self.optimize = optimize
-
-    def showImage(self, scale = '', maskOn = False):
+    def showImage(self, scale = '', maskOn = False, imageSave = False, reverseMask = False, imageName = "image"):
         """
         :param scale: if log, image is in log
         :param maskOn: if True, mask is shown
@@ -96,15 +103,27 @@ class AutoGalfitClass:
                 maskToShow = np.zeros(self.image.shape)
                 maskPoints = np.loadtxt(self.maskFile).astype(int)
                 for i in maskPoints:
-                    maskToShow[i[0], i[1]] = 1
+                    if reverseMask:
+                        maskToShow[i[1], i[0]] = 1
+                    else:
+                        maskToShow[i[0], i[1]] = 1
                 maskToShow = maskToShow[self.imageRegion[0]:self.imageRegion[1],
                                     self.imageRegion[2]:self.imageRegion[3]]
-                plt.pcolormesh(X,Y,maskToShow.T, alpha = 0.1, zorder =100)
+                plt.pcolormesh(X,Y,maskToShow.T, alpha = 0.1, zorder =100, cmap = 'Grays_r')
+
+                xTick = np.linspace(-xRange / 2, xRange / 2, (self.imageRegion[1]-self.imageRegion[0]))
+                yTick = np.linspace(-yRange / 2, yRange / 2, (self.imageRegion[3]-self.imageRegion[2]))
+                YC, XC = np.meshgrid(xTick + (xTick[1]-xTick[0])/2, yTick+ (yTick[1]-yTick[0])/2)
+                plt.contour(XC,YC, maskToShow.T, levels = [0.5], colors = ['r'], lw = '3')
 
         plt.pcolormesh(X,Y, toShow.T, vmin = vM[0], vmax = vM[1])
         plt.xlabel(self.dxName)
         plt.ylabel(self.dxName)
-        plt.show()
+        if imageSave:
+            plt.savefig('%s%s.png'%(self.__workingDirectory, imageName))
+            plt.close()
+        else:
+            plt.show()
     def setWorkingDir(self, workingDirPath):
         """
         :param workingDirPath: path to copy all files and run galfit there
@@ -115,12 +134,18 @@ class AutoGalfitClass:
         if self.__workingDirectory != "" and not os.path.exists(workingDirPath):
             os.mkdir(workingDirPath)
         if workingDirPath != "":
-            shutil.copy2(self.imagePath, "%s%s"%(self.__workingDirectory, self.imagePath))
+            shutil.copy2(self.imagePath, "%s%s"%(self.__workingDirectory, self.imagePath.split("/")[-1]))
+            self.imagePath = self.imagePath.split("/")[-1]
+
             if self.sigmaFile != 'none':
-                shutil.copy2(self.sigmaFile, "%s%s"%(self.__workingDirectory,self.sigmaFile))
-            shutil.copy2(self.psfFile, "%s%s"%(self.__workingDirectory,self.psfFile))
+                shutil.copy2(self.sigmaFile, "%s%s"%(self.__workingDirectory,self.sigmaFile.split("/")[-1]))
+                self.sigmaFile = self.sigmaFile.split("/")[-1]
+
+            shutil.copy2(self.psfFile, "%s%s"%(self.__workingDirectory,self.psfFile.split("/")[-1]))
+            self.psfFile = self.psfFile.split("/")[-1]
             if self.maskFile != 'none':
-                shutil.copy2(self.maskFile, "%s%s"%(self.__workingDirectory,self.maskFile))
+                shutil.copy2(self.maskFile, "%s%s"%(self.__workingDirectory,self.maskFile.split("/")[-1]))
+                self.maskFile = self.maskFile.split("/")[-1]
             if self.consFile != 'none':
                 shutil.copy2(self.consFile, "%s%s"%(self.__workingDirectory,self.consFile))
         if workingDirPath[-1] != "/" and workingDirPath[-1] != "\\":
@@ -155,7 +180,10 @@ class AutoGalfitClass:
             self.__inputFile__ += o.combineText(n0)
             self.__inputFile__ += '\n\n\n'
             n0+=1
-        resFile = open("%sgalfit.feedme"%self.__workingDirectory, 'w')
+        try:
+            resFile = open("%s/galfit.feedme"%(self.__workingDirectory), 'w')
+        except:
+            resFile = open("galfit.feedme", 'w')
         resFile.write(self.__inputFile__)
         resFile.close()
     def runGalfit(self, parameterOutputFile = 'bestFit.txt', runID = -99, saveImage = True):
@@ -183,7 +211,10 @@ class AutoGalfitClass:
             resultFile = '%s%s' %(self.__workingDirectory, parameterOutputFile)
         else:
             resultFile = '%s' %(parameterOutputFile)
-            
+        
+        if self.redshift >0:
+            self.D_A = cosmo.arcsec_per_kpc_proper(self.redshift)
+
         if not os.path.exists(resultFile) or runID == -99:
             resultFile = open(resultFile, 'w')
 
@@ -203,6 +234,9 @@ class AutoGalfitClass:
                     resultFile.write(" ba_%i_out PA_%i_out" % (k, k))
                     if self.cRe:
                         resultFile.write(" circuralizedRe_%i_out"%(k))
+                        if self.redshift>0:
+                            resultFile.write(" circuralizedRe_kpc_%i_out"%(k))
+
             resultFile.write('\n')
         else:
             resultFile = open(resultFile, 'a')
@@ -227,6 +261,9 @@ class AutoGalfitClass:
                     if self.cRe:
                         cirRe = res[k].apix[0] * np.sqrt(res[k].ba[0]) * self.dx
                         resultFile.write(" %.4f"%(cirRe))
+                        if self.redshift>0:
+                            resultFile.write(" %.4f"%((cirRe/self.D_A).value))
+
             else:
                 resultFile.write(" %.3f %.3f" % (-1,-1))
                 resultFile.write(" %.4f" % (-1))
@@ -235,7 +272,9 @@ class AutoGalfitClass:
                     resultFile.write(" %.4f %.4f" % (-1,-1))
                     if self.cRe:
                         cirRe = -1
-                        resultFile.write(" circuralizedRe_%i_out"%(cirRe))
+                        resultFile.write(" -1")
+                        if self.redshift>0:
+                            resultFile.write(" -1")
         resultFile.write('\n')
         resultFile.close()
 
@@ -286,6 +325,8 @@ class AutoGalfitClass:
         """
         try:
             os.remove('%s%s' %(self.__workingDirectory, parameterOutputFile))
+        except:
+            pass
 
         if saveModels:
             if self.__workingDirectory == "":
@@ -298,14 +339,16 @@ class AutoGalfitClass:
             if np.round(i/n,4)*100 % 10 == 0:
                 print(np.round(i/n,2)*100, "% Done")
             self.prepFeedmeFile()
-            self.runGalfit(runID=i, saveImage=saveModels)
+            self.runGalfit(runID=i, saveImage=saveModels, parameterOutputFile = parameterOutputFile)
             try:
                 os.remove("%sgalfit.01"%self.__workingDirectory)
             except:
                 pass
             if saveModels:
-                shutil.copy2('%s%s' %(self.__workingDirectory, self.outputFile), '%smodels/%i_%s' %(self.__workingDirectory, i, self.outputFile))
-                shutil.copy2('%s%iresult.png'%(self.__workingDirectory, abs(i)), '%smodels/%iresult.png'%(self.__workingDirectory, abs(i)))
+                shutil.copy2('%s%s' %(self.__workingDirectory, self.outputFile), 
+                             '%smodels/%i_%s' %(self.__workingDirectory, i, self.outputFile))
+                shutil.copy2('%s%iresult.png'%(self.__workingDirectory, abs(i)), 
+                             '%smodels/%iresult.png'%(self.__workingDirectory, abs(i)))
                 os.remove('%s%iresult.png'%(self.__workingDirectory, abs(i)))
     def prepareAuxFiles(self, ap = 3, substractBKG = True):
         """
@@ -315,11 +358,11 @@ class AutoGalfitClass:
         :return:
         """
         sex = QuickSextractor(self.image, self.header)
-        sex.saveSigmaImage("sigmaImageQS.fits")
-        self.sigmaFile = "sigmaImageQS.fits"
+        sex.saveSigmaImage("%ssigmaImageQS.fits"%(self.__workingDirectory))
+        self.sigmaFile = "%ssigmaImageQS.fits"%(self.__workingDirectory)
         if substractBKG:
-            self.image = sex.saveBKGsubImage("bkgsub_ImageQS.fits")
-            self.imagePath = "bkgsub_ImageQS.fits"
+            self.image = sex.saveBKGsubImage("%sbkgsub_ImageQS.fits"%(self.__workingDirectory))
+            self.imagePath = "%sbkgsub_ImageQS.fits"%(self.__workingDirectory)
 
         greymask = np.zeros(self.image.shape)
         for o in sex.objects:
@@ -329,20 +372,33 @@ class AutoGalfitClass:
             b = o['b']
             t = np.rad2deg(o['theta'])
             r = np.sqrt((x - self.image.shape[0] / 2 + 1) ** 2 + (y - self.image.shape[1] / 2 + 1) ** 2)
-            if r>3:
-                mask = is_pixel_in_ellipse(self.image.shape,
-                        (x - 1, y - 1), a, b, t, scale=6, ap=ap)
+            if r>5:
+                nIter = 0
+                centerEmpty = False
+                if r/a <7:
+                    mask = is_pixel_in_ellipse(self.image.shape,
+                            (x - 1, y - 1), a, b, t, scale=r/a*0.7, ap=ap)
+                else:
+
+                    mask = is_pixel_in_ellipse(self.image.shape,
+                            (x - 1, y - 1), a, b, t, scale=5, ap=ap)
+
                 greymask[mask] = 1
-        mask = open('maskQS.txt', 'w')
+
+
+        mask = open('%smaskQS.txt'%(self.__workingDirectory), 'w')
+
+        
 
         for i in range(greymask.shape[0]):
             for j in range(greymask.shape[1]):
                 if greymask[i, j] == 1:
                     mask.write('%i %i\n' % (i, j))
         mask.close()
-        self.maskFile = 'maskQS.txt'
+        self.maskFile = '%smaskQS.txt'%(self.__workingDirectory)
         if self.__workingDirectory != "":
             self.setWorkingDir(self.__workingDirectory)
+        self.ext = 0
     def prepareConsFile(self, consName='consQS.txt'):
         """
         This method prepares the the constrains file. Removes the previous one if exists!
@@ -350,8 +406,9 @@ class AutoGalfitClass:
         :return:
         """
         self.consFile = consName
-        if os.path.exists(consName):
-            os.remove(consName)
+        if os.path.exists("%s%s"%(self.__workingDirectory, consName)):
+            os.remove("%s%s"%(self.__workingDirectory, consName))
+            self.consFile = "%s%s"%(self.__workingDirectory, consName)
         f = open(consName, 'w')
         f.close()
     def addCon(self, con):
@@ -561,10 +618,27 @@ class QuickSextractor:
             ell = Ellipse(xy = (o['x'], o['y']), width=o['a']*6, height=o['b']*6,
                           angle=np.rad2deg(o['theta']), edgecolor='r', fc = 'None')
             ax.add_patch(ell)
-
         ax.imshow(toShow, vmin=vM[0], vmax=vM[1])
+        ax.scatter(self.objects['x'], self.objects['y'], marker = 'x', c = 'r',zorder = 20, s =20)
         plt.show()
-        fig.close()
+        plt.close()
+    def makeFitObject(self, objectType, zeropoint,
+                      randomMag = 0.2, randomApix=1,n = 3, randomN=1, randomBA=0.2, randomPA=45, randomX=5, randomY=5):
+        dx_pos = self.objects['x'] - self.image.shape[0]
+        dy_pos = self.objects['y'] - self.image.shape[1]
+        r = np.sqrt(dx_pos**2 + dy_pos**2)
+        r0 = np.argsort(r)[0]
+        print(self.objects[r0])
+        
+        FO = FitObject(objectType,
+                    mag=zeropoint -2.5*np.log10(self.objects['flux'][r0]), randomMag=randomMag,
+                    apix=self.objects['a'][r0]*0.4, randomApix=randomApix,
+                    n=n, randomN=randomN,
+                    ba=self.objects['b'][r0]/self.objects['a'][r0], randomBA=randomBA, 
+                    PA=self.objects['theta'][r0] + 90,
+                    randomPA=randomPA, randomX=randomX, randomY=randomY)
+        return FO
+
 def ReadResults(file):
     """
     This function reads the results from galfit file and saves it into FitObject class.

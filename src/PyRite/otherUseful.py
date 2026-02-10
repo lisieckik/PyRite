@@ -20,3 +20,9 @@ def is_pixel_in_ellipse(image_size, center, a, b, theta, scale = 1, ap = 0):
     # Ellipse equation (x_rot / a)^2 + (y_rot / b)^2 <= 1
     ellipse_mask = ((x_rot / a) ** 2 + (y_rot / b) ** 2) <= 1
     return ellipse_mask
+
+def mag_to_jy():
+    return
+
+def jy_to_mag():
+    return
