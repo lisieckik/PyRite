@@ -1,7 +1,7 @@
-figure.figsize : 10, 10
+figure.figsize : 20, 15
 figure.dpi : 120
 
-font.size : 20
+font.size : 45
 
 axes.linewidth : 2
 xtick.major.size : 12
@@ -17,8 +17,8 @@ ytick.minor.visible : True
 
 axes.grid : False
 
-lines.linewidth : 3
-lines.markersize : 15
+lines.linewidth : 5.5
+lines.markersize : 20
 
 legend.frameon : True
 legend.loc : best
@@ -26,3 +26,5 @@ legend.loc : best
 text.usetex : False
 mathtext.fontset : stix
 font.family : STIXGeneral
+
+savefig.dpi : 300

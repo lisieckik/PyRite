@@ -186,7 +186,7 @@ class AutoGalfitClass:
             resFile = open("galfit.feedme", 'w')
         resFile.write(self.__inputFile__)
         resFile.close()
-    def runGalfit(self, parameterOutputFile = 'bestFit.txt', runID = -99, saveImage = True):
+    def runGalfit(self, parameterOutputFile = 'bestFit.txt', runID = -99, saveImage = True, percentagesContrast = [0,98]):
         """
         Runs galfit once
         :param parameterOutputFile: File to save the results, str
@@ -297,7 +297,7 @@ class AutoGalfitClass:
                 model = model + uV
                 residual = residual + uV
 
-                v = np.percentile(np.log10(image0), [0,98])
+                v = np.percentile(np.log10(image0), percentagesContrast)
                 plt.subplot(131)
                 plt.imshow(np.log10(image0), vmin = v[0], vmax=v[1])
 
@@ -315,7 +315,7 @@ class AutoGalfitClass:
                 plt.close()
             except:
                 print("Image could not be produce!")
-    def galfitBootstrap(self, n = 100, saveModels = False, parameterOutputFile = 'bestFit.txt'):
+    def galfitBootstrap(self, n = 100, saveModels = False, parameterOutputFile = 'bestFit.txt', percentagesContrast = [0,98]):
         """
         Allows for multiple galfit run with random parameters defined in FitObjects
         :param n: Number of runs, int
@@ -339,7 +339,7 @@ class AutoGalfitClass:
             if np.round(i/n,4)*100 % 10 == 0:
                 print(np.round(i/n,2)*100, "% Done")
             self.prepFeedmeFile()
-            self.runGalfit(runID=i, saveImage=saveModels, parameterOutputFile = parameterOutputFile)
+            self.runGalfit(runID=i, saveImage=saveModels, parameterOutputFile = parameterOutputFile, percentagesContrast = percentagesContrast)
             try:
                 os.remove("%sgalfit.01"%self.__workingDirectory)
             except:
@@ -350,7 +350,7 @@ class AutoGalfitClass:
                 shutil.copy2('%s%iresult.png'%(self.__workingDirectory, abs(i)), 
                              '%smodels/%iresult.png'%(self.__workingDirectory, abs(i)))
                 os.remove('%s%iresult.png'%(self.__workingDirectory, abs(i)))
-    def prepareAuxFiles(self, ap = 3, substractBKG = True):
+    def prepareAuxFiles(self, newName='', ap = 3, substractBKG = True):
         """
         This functions prepares sigma image, mask
         and background substracted image with use of sep
@@ -358,11 +358,21 @@ class AutoGalfitClass:
         :return:
         """
         sex = QuickSextractor(self.image, self.header)
-        sex.saveSigmaImage("%ssigmaImageQS.fits"%(self.__workingDirectory))
-        self.sigmaFile = "%ssigmaImageQS.fits"%(self.__workingDirectory)
+        if newName == '':
+            sex.saveSigmaImage("%ssigmaImageQS.fits"%(self.__workingDirectory))
+            self.sigmaFile = "%ssigmaImageQS.fits"%(self.__workingDirectory)
+        else:
+            sex.saveSigmaImage("%ssigmaImageQS_%s.fits"%(self.__workingDirectory, newName))
+            self.sigmaFile = "%ssigmaImageQS_%s.fits"%(self.__workingDirectory, newName)
+
         if substractBKG:
-            self.image = sex.saveBKGsubImage("%sbkgsub_ImageQS.fits"%(self.__workingDirectory))
-            self.imagePath = "%sbkgsub_ImageQS.fits"%(self.__workingDirectory)
+            if newName == '':
+                self.image = sex.saveBKGsubImage("%sbkgsub_ImageQS.fits"%(self.__workingDirectory))
+                self.imagePath = "%sbkgsub_ImageQS.fits"%(self.__workingDirectory)
+            else:
+                self.image = sex.saveBKGsubImage("%sbkgsub_ImageQS_%s.fits"%(self.__workingDirectory, newName))
+                self.imagePath = "%sbkgsub_ImageQS_%s.fits"%(self.__workingDirectory, newName)
+
 
         greymask = np.zeros(self.image.shape)
         for o in sex.objects:
@@ -385,9 +395,10 @@ class AutoGalfitClass:
 
                 greymask[mask] = 1
 
-
-        mask = open('%smaskQS.txt'%(self.__workingDirectory), 'w')
-
+        if newName == '':
+           mask = open('%smaskQS.txt'%(self.__workingDirectory), 'w')
+        else:
+           mask = open('%smaskQS_%s.txt'%(self.__workingDirectory, newName), 'w')
         
 
         for i in range(greymask.shape[0]):
@@ -395,7 +406,11 @@ class AutoGalfitClass:
                 if greymask[i, j] == 1:
                     mask.write('%i %i\n' % (i, j))
         mask.close()
-        self.maskFile = '%smaskQS.txt'%(self.__workingDirectory)
+        if newName == '':
+            self.maskFile = '%smaskQS.txt'%(self.__workingDirectory)
+        else:
+            self.maskFile = '%smaskQS_%s.txt'%(self.__workingDirectory, newName)
+
         if self.__workingDirectory != "":
             self.setWorkingDir(self.__workingDirectory)
         self.ext = 0
@@ -629,7 +644,7 @@ class QuickSextractor:
         r = np.sqrt(dx_pos**2 + dy_pos**2)
         r0 = np.argsort(r)[0]
         print(self.objects[r0])
-        
+
         FO = FitObject(objectType,
                     mag=zeropoint -2.5*np.log10(self.objects['flux'][r0]), randomMag=randomMag,
                     apix=self.objects['a'][r0]*0.4, randomApix=randomApix,

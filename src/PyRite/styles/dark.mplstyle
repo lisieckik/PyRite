@@ -1,0 +1,101 @@
+##################################################
+# BACKGROUND
+##################################################
+
+figure.facecolor : black
+axes.facecolor : black
+savefig.facecolor : black
+savefig.edgecolor : black
+
+##################################################
+# TEXT
+##################################################
+
+text.color : white
+
+axes.labelcolor : white
+axes.titlecolor : white
+
+xtick.color : white
+ytick.color : white
+
+##################################################
+# AXES
+##################################################
+
+axes.edgecolor : white
+axes.linewidth : 2
+
+axes.grid : False
+
+##################################################
+# TICKS
+##################################################
+
+xtick.direction : out
+ytick.direction : out
+
+xtick.top : False
+ytick.right : False
+
+xtick.minor.visible : True
+ytick.minor.visible : True
+
+xtick.major.size : 12
+xtick.major.width : 2
+xtick.minor.size : 7
+xtick.minor.width : 1
+ytick.major.size : 12
+ytick.major.width : 2
+ytick.minor.size : 7
+ytick.minor.width : 1
+
+##################################################
+# GRID
+##################################################
+
+grid.color : 666666
+grid.alpha : 0.3
+grid.linestyle : --
+
+##################################################
+# LEGEND
+##################################################
+
+legend.facecolor : 222222
+legend.edgecolor : 666666
+legend.framealpha : 0.9
+
+##################################################
+# FONTS
+##################################################
+
+font.size : 20
+mathtext.fontset : stix
+font.family : STIXGeneral
+text.usetex : False
+
+##################################################
+# LINES
+##################################################
+
+lines.linewidth : 2
+
+##################################################
+# IMAGES
+##################################################
+
+image.cmap : magma
+
+##################################################
+# FIGURE
+##################################################
+
+figure.figsize : 10, 10
+figure.dpi : 120
+
+##################################################
+# SAVING
+##################################################
+
+savefig.dpi : 300
