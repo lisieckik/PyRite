@@ -76,6 +76,7 @@ class AutoGalfitClass:
         :param maskOn: if True, mask is shown
         :return:
         """
+        fig = plt.figure()
         xRange = (self.imageRegion[1]-self.imageRegion[0]) * self.dx
         yRange = (self.imageRegion[3]-self.imageRegion[2]) * self.dx
         xTick = np.linspace(-xRange / 2, xRange / 2, (self.imageRegion[1]-self.imageRegion[0]) + 1)
@@ -94,7 +95,8 @@ class AutoGalfitClass:
         else:
             toShow = self.image[self.imageRegion[0]:self.imageRegion[1],
                                 self.imageRegion[2]:self.imageRegion[3]]
-            vM = np.percentile(toShow, [10, 95.])
+            toShow = change_image(toShow)
+            vM = np.percentile(toShow, [5,99.9])
 
         if maskOn:
             if self.maskFile == 'none':
@@ -114,14 +116,14 @@ class AutoGalfitClass:
                 xTick = np.linspace(-xRange / 2, xRange / 2, (self.imageRegion[1]-self.imageRegion[0]))
                 yTick = np.linspace(-yRange / 2, yRange / 2, (self.imageRegion[3]-self.imageRegion[2]))
                 YC, XC = np.meshgrid(xTick + (xTick[1]-xTick[0])/2, yTick+ (yTick[1]-yTick[0])/2)
-                plt.contour(XC,YC, maskToShow.T, levels = [0.5], colors = ['r'], lw = '3')
+                plt.contour(XC,YC, maskToShow.T, levels = [0.5], colors = ['r'])
 
         plt.pcolormesh(X,Y, toShow.T, vmin = vM[0], vmax = vM[1])
         plt.xlabel(self.dxName)
         plt.ylabel(self.dxName)
         if imageSave:
             plt.savefig('%s%s.png'%(self.__workingDirectory, imageName))
-            plt.close()
+            plt.close(fig)
         else:
             plt.show()
     def setWorkingDir(self, workingDirPath):
@@ -186,7 +188,7 @@ class AutoGalfitClass:
             resFile = open("galfit.feedme", 'w')
         resFile.write(self.__inputFile__)
         resFile.close()
-    def runGalfit(self, parameterOutputFile = 'bestFit.txt', runID = -99, saveImage = True, percentagesContrast = [0,98]):
+    def runGalfit(self, parameterOutputFile = 'bestFit.txt', runID = -99, saveImage = True, percentagesContrast = [2,98]):
         """
         Runs galfit once
         :param parameterOutputFile: File to save the results, str
@@ -202,10 +204,9 @@ class AutoGalfitClass:
             process = Popen(proc, stdout=PIPE, stderr=PIPE, shell=True)
 
         stdout, stderr = process.communicate()
-
-        chi2, res = ReadResults("%sgalfit.01"%self.__workingDirectory)
-        __, inp = ReadResults("%sgalfit.feedme"%self.__workingDirectory)
-
+        
+        chi2_reduced, chi2, ndof, nparam, res = ReadResults("%sgalfit.01"%self.__workingDirectory)
+        __, __, __, __, inp = ReadResults("%sgalfit.feedme"%self.__workingDirectory)
 
         if self.__workingDirectory != "":
             resultFile = '%s%s' %(self.__workingDirectory, parameterOutputFile)
@@ -218,7 +219,7 @@ class AutoGalfitClass:
         if not os.path.exists(resultFile) or runID == -99:
             resultFile = open(resultFile, 'w')
 
-            resultFile.write("# runID chi2")
+            resultFile.write("# runID chi2 chi2_reduced ndof nparam")
             for k in inp.keys():
                 resultFile.write(" x_%i_in y_%i_in" % (k, k))
                 resultFile.write(" mag_%i_in" % (k))
@@ -237,13 +238,14 @@ class AutoGalfitClass:
                         if self.redshift>0:
                             resultFile.write(" circuralizedRe_kpc_%i_out"%(k))
 
+            resultFile.write(" BIC")
             resultFile.write('\n')
         else:
             resultFile = open(resultFile, 'a')
 
 
 
-        resultFile.write('%i %f '%(runID, chi2))
+        resultFile.write('%i %f %f %i %i '%(runID, chi2, chi2_reduced, ndof, nparam))
         for k in inp.keys():
             resultFile.write(" %.3f %.3f" % (inp[k].X[0], inp[k].Y[0]))
             resultFile.write(" %.4f" % (inp[k].mag[0]))
@@ -259,10 +261,13 @@ class AutoGalfitClass:
                     resultFile.write(" %.4f %.4f" % (res[k].apix[0], res[k].n[0]))
                     resultFile.write(" %.4f %.4f" % (res[k].ba[0], res[k].PA[0]))
                     if self.cRe:
-                        cirRe = res[k].apix[0] * np.sqrt(res[k].ba[0]) * self.dx
+                        cirRe = res[k].apix[0] * np.sqrt(res[k].ba[0])
                         resultFile.write(" %.4f"%(cirRe))
                         if self.redshift>0:
-                            resultFile.write(" %.4f"%((cirRe/self.D_A).value))
+                            resultFile.write(" %.4f"%((cirRe* self.dx/self.D_A).value))
+                
+                BIC = chi2 + nparam*np.log(ndof)
+                              
 
             else:
                 resultFile.write(" %.3f %.3f" % (-1,-1))
@@ -275,6 +280,8 @@ class AutoGalfitClass:
                         resultFile.write(" -1")
                         if self.redshift>0:
                             resultFile.write(" -1")
+                BIC = -1.
+        resultFile.write(" %.4f"%BIC)  
         resultFile.write('\n')
         resultFile.close()
 
@@ -287,35 +294,30 @@ class AutoGalfitClass:
                 model = data[2].data
                 residual = data[3].data
 
-                mV = np.min(residual)
-                image0 = image0 - mV
-                model = model - mV
-                residual = residual - mV
+                image0 = change_image(image0)
+                model = change_image(model)
+                residual = change_image(residual)
 
-                uV = np.sort(np.unique(residual))[1]*0.1
-                image0 = image0 + uV
-                model = model + uV
-                residual = residual + uV
-
-                v = np.percentile(np.log10(image0), percentagesContrast)
+                v = np.percentile(image0, percentagesContrast)
                 plt.subplot(131)
-                plt.imshow(np.log10(image0), vmin = v[0], vmax=v[1])
+                plt.imshow(image0, vmin = v[0], vmax=v[1])
 
 
                 plt.subplot(132)
-                plt.imshow(np.log10(model), vmin = v[0], vmax=v[1])
+                plt.imshow(model, vmin = v[0], vmax=v[1])
 
 
                 plt.subplot(133)
-                plt.imshow(np.log10(residual), vmin = v[0], vmax=v[1])
+                plt.imshow(residual, vmin = v[0], vmax=v[1])
 
                 plt.tight_layout()
                 plt.savefig('%s%iresult.png'%(self.__workingDirectory, abs(runID)))
-                data.close()
+                data.close(fig)
                 plt.close()
-            except:
+            except Exception as err:
+                print(err)
                 print("Image could not be produce!")
-    def galfitBootstrap(self, n = 100, saveModels = False, parameterOutputFile = 'bestFit.txt', percentagesContrast = [0,98]):
+    def galfitBootstrap(self, n = 100, saveModels = False, parameterOutputFile = 'bestFit.txt', percentagesContrast = [2,98], quiet = False):
         """
         Allows for multiple galfit run with random parameters defined in FitObjects
         :param n: Number of runs, int
@@ -336,7 +338,7 @@ class AutoGalfitClass:
                 if not os.path.exists('%s%s' %(self.__workingDirectory, 'models')):
                     os.mkdir('%s%s' %(self.__workingDirectory, 'models'))
         for i in range(n):
-            if np.round(i/n,4)*100 % 10 == 0:
+            if np.round(i/n,4)*100 % 10 == 0 and not quiet:
                 print(np.round(i/n,2)*100, "% Done")
             self.prepFeedmeFile()
             self.runGalfit(runID=i, saveImage=saveModels, parameterOutputFile = parameterOutputFile, percentagesContrast = percentagesContrast)
@@ -394,7 +396,6 @@ class AutoGalfitClass:
                             (x - 1, y - 1), a, b, t, scale=5, ap=ap)
 
                 greymask[mask] = 1
-
         if newName == '':
            mask = open('%smaskQS.txt'%(self.__workingDirectory), 'w')
         else:
@@ -660,7 +661,10 @@ def ReadResults(file):
     :param file: galfit result file eg. galfit.01
     :return:
     """
+    chi2_reduced = -1
     chi2 = -1
+    ndof = 1
+    nparam = 0
     try:
         file = open(file, 'r').readlines()
         results = {}
@@ -669,7 +673,9 @@ def ReadResults(file):
             lsplit = l.split()
             if len(lsplit)>1:
                 if lsplit[0] == "#" and lsplit[1] == "Chi^2/nu":
-                    chi2 = float(lsplit[3][0:-1])
+                    chi2_reduced = float(lsplit[3][0:-1])
+                    chi2 = float(lsplit[6][0:-1])
+                    ndof = int(lsplit[9][0:-1])
 
                 if lsplit[0] == "#" and (lsplit[1] == "Component" or lsplit[1] == "Object"):
                     comp = True
@@ -680,20 +686,28 @@ def ReadResults(file):
                     elif lsplit[0] == "1)":
                         cHere.X = [float(lsplit[1]), int(lsplit[3])]
                         cHere.Y = [float(lsplit[2]), int(lsplit[4])]
+                        if cHere.X[1] == 1:nparam+=1
+                        if cHere.Y[1] == 1:nparam+=1
                     elif lsplit[0] == "3)":
                         cHere.mag = [float(lsplit[1]), int(lsplit[2])]
+                        if cHere.mag[1] == 1:nparam+=1
                     elif lsplit[0] == "4)":
                         cHere.apix = [float(lsplit[1]), int(lsplit[2])]
+                        if cHere.apix[1] == 1:nparam+=1
                     elif lsplit[0] == "5)":
                         cHere.n = [float(lsplit[1]), int(lsplit[2])]
+                        if cHere.n[1] == 1:nparam+=1
                     elif lsplit[0] == "9)":
                         cHere.ba = [float(lsplit[1]), int(lsplit[2])]
+                        if cHere.ba[1] == 1:nparam+=1
                     elif lsplit[0] == "10)":
                         cHere.PA = [float(lsplit[1]), int(lsplit[2])]
+                        if cHere.PA[1] == 1:nparam+=1
                     elif lsplit[0] == "Z)":
                         comp = False
                         cHere.setText()
                         results[cNumber] = cHere
+
     except:
         results = {}
-    return chi2, results
+    return chi2_reduced, chi2, ndof, nparam, results

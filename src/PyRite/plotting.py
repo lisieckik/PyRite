@@ -93,9 +93,9 @@ def makeSubplots(fig, nx, ny, pads, procentagex = [], procentagey = [],
             if len(visibility) != nx*ny:
                 if len(visibility) != 0:
                     print("Wrong number of variables in visibility")
-                visibleHere = False
+                visibleHere = True
             else:
-                visibleHere = visibility[y*ny + x]
+                visibleHere = visibility[y*(ny-1) + x]
             
             ax = fig.add_axes([x0Here, y0Here,dxHere, dyHere], visible = visibleHere)
             axes.append(ax)
