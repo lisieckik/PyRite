@@ -294,9 +294,16 @@ class AutoGalfitClass:
                 model = data[2].data
                 residual = data[3].data
 
-                image0 = change_image(image0)
-                model = change_image(model)
-                residual = change_image(residual)
+
+                vmin = np.min([np.min(residual), np.min(image0), np.min(model)])
+                model = model - vmin
+                residual = residual - vmin
+                image0 = image0 - vmin
+
+                vmin = np.unique(image0)[1]
+                model = np.log10(model + vmin)
+                residual = np.log10(residual + vmin)
+                image0 = np.log10(image0 + vmin)
 
                 v = np.percentile(image0, percentagesContrast)
                 plt.subplot(131)

@@ -3,14 +3,18 @@ import matplotlib.pyplot as plt
 import PyRite
 from matplotlib.ticker import MultipleLocator, AutoMinorLocator, FixedLocator
 
-def set_style(style="default"):
+def set_style(style="default", axisRatio = None):
     style_path = (
         pathlib.Path(PyRite.__file__).parent
         / "styles"
         / f"{style}.mplstyle"
     )
-
     plt.style.use(style_path)
+
+    if axisRatio is not None:
+        width, _ = plt.rcParams["figure.figsize"]
+        plt.rcParams["figure.figsize"] = (width, width * axisRatio)
+
 
 def updateAxisColor(c):
     
