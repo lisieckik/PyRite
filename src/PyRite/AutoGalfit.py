@@ -70,7 +70,8 @@ class AutoGalfitClass:
         else:
             self.sizeConvolution = sizeConvolution
         self.optimize = optimize
-    def showImage(self, scale = '', maskOn = False, imageSave = False, reverseMask = False, imageName = "image"):
+    def showImage(self, scale = '', maskOn = False, imageSave = False, reverseMask = False, imageName = "image",
+                  percentagesContrast = [5,99]):
         """
         :param scale: if log, image is in log
         :param maskOn: if True, mask is shown
@@ -90,13 +91,14 @@ class AutoGalfitClass:
             aSort = np.argsort(toShow)
             toShow = toShow + toShow[aSort[0,2], aSort[1,2]]
             toShow = np.log10(toShow)
-            vM = np.percentile(toShow, [10, 99.])
+            vM = np.percentile(toShow, percentagesContrast)
 
         else:
             toShow = self.image[self.imageRegion[0]:self.imageRegion[1],
                                 self.imageRegion[2]:self.imageRegion[3]]
             toShow = change_image(toShow)
-            vM = np.percentile(toShow, [5,99.9])
+            toShow = change_image(toShow)
+            vM = np.percentile(toShow, percentagesContrast)
 
         if maskOn:
             if self.maskFile == 'none':
@@ -207,6 +209,7 @@ class AutoGalfitClass:
         
         chi2_reduced, chi2, ndof, nparam, res = ReadResults("%sgalfit.01"%self.__workingDirectory)
         __, __, __, __, inp = ReadResults("%sgalfit.feedme"%self.__workingDirectory)
+ 
 
         if self.__workingDirectory != "":
             resultFile = '%s%s' %(self.__workingDirectory, parameterOutputFile)
@@ -308,6 +311,9 @@ class AutoGalfitClass:
                 v = np.percentile(image0, percentagesContrast)
                 plt.subplot(131)
                 plt.imshow(image0, vmin = v[0], vmax=v[1])
+                mask = fits.open(self.maskFile)[0].data
+                plt.imshow(mask[self.imageRegion[0]:self.imageRegion[1],
+                                self.imageRegion[2]:self.imageRegion[3]], alpha = 0.3)
 
 
                 plt.subplot(132)
@@ -359,14 +365,14 @@ class AutoGalfitClass:
                 shutil.copy2('%s%iresult.png'%(self.__workingDirectory, abs(i)), 
                              '%smodels/%iresult.png'%(self.__workingDirectory, abs(i)))
                 os.remove('%s%iresult.png'%(self.__workingDirectory, abs(i)))
-    def prepareAuxFiles(self, newName='', ap = 3, substractBKG = True):
+    def prepareAuxFiles(self, newName='', ap = 3, substractBKG = True, thresh = 1.3, deblend_nthresh = 32,):
         """
         This functions prepares sigma image, mask
         and background substracted image with use of sep
         :param ap: number of additional pixels for masking, int
         :return:
         """
-        sex = QuickSextractor(self.image, self.header)
+        sex = QuickSextractor(self.image, self.header, thresh = 1.3, deblend_nthresh = 32,)
         if newName == '':
             sex.saveSigmaImage("%ssigmaImageQS.fits"%(self.__workingDirectory))
             self.sigmaFile = "%ssigmaImageQS.fits"%(self.__workingDirectory)
@@ -390,34 +396,37 @@ class AutoGalfitClass:
             a = o['a']
             b = o['b']
             t = np.rad2deg(o['theta'])
-            r = np.sqrt((x - self.image.shape[0] / 2 + 1) ** 2 + (y - self.image.shape[1] / 2 + 1) ** 2)
+            r = np.sqrt((x - self.image.shape[0] / 2) ** 2 + (y - self.image.shape[1] / 2) ** 2)
             if r>5:
                 nIter = 0
                 centerEmpty = False
                 if r/a <7:
                     mask = is_pixel_in_ellipse(self.image.shape,
-                            (x - 1, y - 1), a, b, t, scale=r/a*0.7, ap=ap)
+                            (x, y), a, b, t, scale=r/a*0.7, ap=ap)
                 else:
 
                     mask = is_pixel_in_ellipse(self.image.shape,
-                            (x - 1, y - 1), a, b, t, scale=5, ap=ap)
+                            (x, y), a, b, t, scale=5, ap=ap)
 
                 greymask[mask] = 1
-        if newName == '':
-           mask = open('%smaskQS.txt'%(self.__workingDirectory), 'w')
-        else:
-           mask = open('%smaskQS_%s.txt'%(self.__workingDirectory, newName), 'w')
+        
         
 
-        for i in range(greymask.shape[0]):
-            for j in range(greymask.shape[1]):
-                if greymask[i, j] == 1:
-                    mask.write('%i %i\n' % (i, j))
-        mask.close()
         if newName == '':
-            self.maskFile = '%smaskQS.txt'%(self.__workingDirectory)
+            fits.writeto(
+            '%smaskQS.fits'%(self.__workingDirectory),
+            greymask.astype(np.uint8),
+            overwrite=True)
         else:
-            self.maskFile = '%smaskQS_%s.txt'%(self.__workingDirectory, newName)
+            fits.writeto(
+            '%smaskQS_%s.fits'%(self.__workingDirectory, newName),
+            greymask.astype(np.uint8),
+            overwrite=True)
+
+        if newName == '':
+            self.maskFile = '%smaskQS.fits'%(self.__workingDirectory)
+        else:
+            self.maskFile = '%smaskQS_%s.fits'%(self.__workingDirectory, newName)
 
         if self.__workingDirectory != "":
             self.setWorkingDir(self.__workingDirectory)
@@ -718,3 +727,11 @@ def ReadResults(file):
     except:
         results = {}
     return chi2_reduced, chi2, ndof, nparam, results
+
+def CombineMasks(file1, file2, outputFile):
+    arr1 = fits.open(file1)[0].data
+    arr2 = fits.open(file1)[0].data
+
+    arr = arr1 + arr2
+
+    fits.writeto(outputFile, arr, overwrite=True)

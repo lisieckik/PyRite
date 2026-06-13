@@ -2,6 +2,9 @@ import pathlib
 import matplotlib.pyplot as plt
 import PyRite
 from matplotlib.ticker import MultipleLocator, AutoMinorLocator, FixedLocator
+import matplotlib.colors as mcolors
+from matplotlib import colormaps
+import numpy as np
 
 def set_style(style="default", axisRatio = None):
     style_path = (
@@ -16,7 +19,7 @@ def set_style(style="default", axisRatio = None):
         plt.rcParams["figure.figsize"] = (width, width * axisRatio)
 
 
-def updateAxisColor(c):
+def updateAxisColor(c, lw = None):
     
     plt.rcParams.update({
         "axes.edgecolor": c,
@@ -26,6 +29,12 @@ def updateAxisColor(c):
         "xtick.color": c,
         "ytick.color":c,
     })
+
+    if lw != None:
+        plt.rcParams.update({
+        "axes.linewidth" : lw
+    })
+        
 
 def remakeTicks(x, y, ax=None, xoff = 0, yoff = 0):
     """
@@ -78,6 +87,7 @@ def makeSubplots(fig, nx, ny, pads, procentagex = [], procentagey = [],
 
     y0Here = y0
 
+    naxis = 0
     for y in range(ny):
         if len(procentagey) != ny:
             if len(procentagey) != 0:
@@ -99,11 +109,12 @@ def makeSubplots(fig, nx, ny, pads, procentagex = [], procentagey = [],
                     print("Wrong number of variables in visibility")
                 visibleHere = True
             else:
-                visibleHere = visibility[y*(ny-1) + x]
+                visibleHere = visibility[naxis]
             
             ax = fig.add_axes([x0Here, y0Here,dxHere, dyHere], visible = visibleHere)
             axes.append(ax)
             x0Here += dxHere + xspace
+            naxis += 1
         y0Here += dyHere + yspace
 
     if len(colorbar) == 0:
@@ -121,3 +132,12 @@ def makeSubplots(fig, nx, ny, pads, procentagex = [], procentagey = [],
             dy = 1-y0-yk
         axes.append(fig.add_axes([x0, y0, dx, dy]))
     return axes
+
+def truncate_colormap(cmap_name, minval=0.0, maxval=1.0, n=256):
+    cmap = colormaps.get_cmap(cmap_name)
+    new_cmap = mcolors.LinearSegmentedColormap.from_list(
+        f'trunc({cmap.name},{minval:.2f},{maxval:.2f})',
+        cmap(np.linspace(minval, maxval, n))
+    )
+    return new_cmap
+
