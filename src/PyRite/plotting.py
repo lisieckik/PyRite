@@ -35,6 +35,13 @@ def updateAxisColor(c, lw = None):
         "axes.linewidth" : lw
     })
         
+def updateFaceColor(c):
+     plt.rcParams.update({
+        "figure.facecolor": c,
+        "axes.facecolor" : c,
+        "savefig.facecolor": c,
+        "savefig.edgecolor": c,
+    })
 
 def remakeTicks(x, y, ax=None, xoff = 0, yoff = 0):
     """
