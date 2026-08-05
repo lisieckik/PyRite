@@ -43,7 +43,7 @@ def updateFaceColor(c):
         "savefig.edgecolor": c,
     })
 
-def remakeTicks(x, y, ax=None, xoff = 0, yoff = 0):
+def remakeTicks(x, y, ax=None, xoff = 0, yoff = 0, xminor = True, yminor = True):
     """
     :param x: distance between ticks in x
     :param y: distance between ticks in y
@@ -56,6 +56,12 @@ def remakeTicks(x, y, ax=None, xoff = 0, yoff = 0):
         ax = plt.gca()
     ax.xaxis.set_major_locator(MultipleLocator(x, offset = xoff))
     ax.yaxis.set_major_locator(MultipleLocator(y, offset = yoff))
+
+    if xminor == True:
+        ax.xaxis.set_minor_locator(AutoMinorLocator())
+    #elif isinstance(xminor, float) or isinstance(xminor, int):
+    if yminor == True:
+        ax.yaxis.set_minor_locator(AutoMinorLocator())
 
 def makeSubplots(fig, nx, ny, pads, procentagex = [], procentagey = [],
                  visibility = [], xspace = 0, yspace = 0, colorbar = []):
@@ -138,6 +144,8 @@ def makeSubplots(fig, nx, ny, pads, procentagex = [], procentagey = [],
             y0 = y0
             dy = 1-y0-yk
         axes.append(fig.add_axes([x0, y0, dx, dy]))
+    if nx*ny == 1:
+        return axes[0]
     return axes
 
 def truncate_colormap(cmap_name, minval=0.0, maxval=1.0, n=256):
