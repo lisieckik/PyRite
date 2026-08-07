@@ -6,6 +6,7 @@ from astropy.nddata.utils import Cutout2D
 from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
 import json
+from importlib.resources import files
 
 def is_pixel_in_ellipse(image_size, center, a, b, theta, scale = 1, ap = 0):
     # Generate the grid of coordinates
@@ -88,7 +89,7 @@ def make_cutout(big_image, coord, width_arcsec, output_name, ext = 1):
                  overwrite=True)  # writing the cutout data to a new fits file with the output filename given above
 
 def cigale_filters(v=25):
-    fin = "CIGALE%i_filters_parsed.json"%i
-    with open(fin, "r") as f:
+    path = files(__package__) / f"CIGALE{v}_filters_parsed.json"
+    with path.open("r") as f:
         loaded = json.load(f)
-    return fin
+    return loaded
