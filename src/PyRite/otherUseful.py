@@ -7,6 +7,7 @@ from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
 import json
 from importlib.resources import files
+import subprocess
 
 def is_pixel_in_ellipse(image_size, center, a, b, theta, scale = 1, ap = 0):
     # Generate the grid of coordinates
@@ -93,3 +94,25 @@ def cigale_filters(v=25):
     with path.open("r") as f:
         loaded = json.load(f)
     return loaded
+
+def prepareKernel(kernelFWHM = 2., kernelSize = 5, output = ''):
+    """
+    :param kernelFWHM: size of gaussian (pix)
+    :param kernelSize: size of the kernel file (pix)
+    :param output: name of the output, if default, file will be named kernel_%.2f_%i.fits with both sizes
+    :return: output
+    """
+    if output == '':
+        output = 'kernel_%.2f_%i.fits'%(kernelFWHM, kernelSize)
+    result = subprocess.run(
+        [
+            "astmkprof",
+            '--kernel=gaussian,%.2f,%.2f'%(kernelFWHM, kernelSize),
+            '--oversample=1',
+            "--output=%s" % output
+        ],
+        capture_output=True,
+        text=True
+    )
+    print('File created:', output)
+    return output

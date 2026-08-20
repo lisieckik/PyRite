@@ -104,13 +104,8 @@ class AutoGalfitClass:
             if self.maskFile == 'none':
                 print("There is no mask to show!")
             else:
-                maskToShow = np.zeros(self.image.shape)
-                maskPoints = np.loadtxt(self.maskFile).astype(int)
-                for i in maskPoints:
-                    if reverseMask:
-                        maskToShow[i[1], i[0]] = 1
-                    else:
-                        maskToShow[i[0], i[1]] = 1
+
+                maskToShow = fits.open(self.maskFile)[0].data
                 maskToShow = maskToShow[self.imageRegion[0]:self.imageRegion[1],
                                     self.imageRegion[2]:self.imageRegion[3]]
                 plt.pcolormesh(X,Y,maskToShow.T, alpha = 0.1, zorder =100, cmap = 'Grays_r')

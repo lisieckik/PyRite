@@ -156,3 +156,56 @@ def truncate_colormap(cmap_name, minval=0.0, maxval=1.0, n=256):
     )
     return new_cmap
 
+def showMask(ax, maskFile, maskColor = 'dodgerblue', h = ''):
+    """
+    :param ax: axis object on which you want to show the mask
+    :param maskFile: if str, opens it with astropy.io.fits, otherwise checks if 2D array
+    :param maskColor: pyplot color
+    :return: None
+    """
+    if isinstance(maskFile, str):
+        maskToShow = fits.open(maskFile)
+        if h == '':
+            try:
+                maskToShow = maskToShow[0].data
+            except:
+                maskToShow = maskToShow[1].data
+        else:
+            maskToShow = maskToShow[h].data
+            
+    else:
+        maskToShow = maskFile
+
+    xTick = np.arange(maskToShow.shape[0])
+    yTick = np.arange(maskToShow.shape[1])
+
+
+
+    YC, XC = np.meshgrid(xTick + (xTick[1] - xTick[0]) / 2+1,
+                         yTick + (yTick[1] - yTick[0]) / 2+1)
+    if len(np.unique(maskFile)) <2:
+        levels = [0.5]
+        if maskColor == 'random':
+            maskColor = np.random.random(3)
+        colors = [maskColor]
+        lws = [1]
+    else:
+        levels = np.arange(0, len(np.unique(maskFile)))+0.5
+        if maskColor == 'random':
+            colors = []
+            for i in levels:
+                maskColor = np.random.random(3)
+                colors.append(maskColor)
+        else:
+            colors = [maskColor]*len(levels)
+        lws = [1]*len(levels)
+    ax.contour(XC, YC, maskToShow.T, levels=levels, colors=colors,
+               linewidths = lws)
+
+
+    maskToShow = np.log10(maskToShow)
+    maskToShow[maskToShow>-np.inf] = 1
+    Y, X = np.meshgrid(xTick+1, yTick+1)
+    ax.pcolormesh(X+0.5, Y+0.5, maskToShow.T,
+                  alpha=0.45, zorder=100,
+                  cmap='Blues_r')
