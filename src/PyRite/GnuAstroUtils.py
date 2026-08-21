@@ -19,6 +19,9 @@ def runNoiseChisel(inputImage,
                    snminarea=10,
                    minskyfrac=0.7,
                    outliernumngb = 15,
+                   interpnumngb = 15,
+                   largeTileSize = 150,
+                   tileSize = 30,
                    output = 'detected.fits',
                    kernel = '',
                    parameters = '',
@@ -68,7 +71,10 @@ def runNoiseChisel(inputImage,
             '--kernel=%s'%kernel,
             '--snminarea=%i'%snminarea,
             '--minskyfrac=%f'%minskyfrac,
-            '--outliernumngb=%i'%outliernumngb
+            '--outliernumngb=%i'%outliernumngb,
+            '--interpnumngb=%i'%interpnumngb,
+            '--largetilesize=%i,%i'%(largeTileSize,largeTileSize),
+            '--tilesize=%i,%i'%(tileSize,tileSize)
         ],
         capture_output=True,
         text=True
@@ -165,19 +171,18 @@ def segmentNoiseChiselResults(detectedImage,
 def makeCatalogue(nchiselImage,
                   zp = 27.99959,
                   output='catalog.fits',
-                  verbose = False):
-    result = subprocess.run(
+                  verbose = False,onlySB = False):
+    if onlySB:
+            result = subprocess.run(
         [
             "astmkcatalog",
             nchiselImage,
-            '--zeropoint=%f'%zp,
             '--ids',
             '--x',
             '--y',
-            '--ra',
-            '--dec',
             '--area',
-            '--magnitude',
+            '--sum',
+            '--sum-error',
             '--semi-major',
             '--semi-minor',
             '--position-angle',
@@ -186,6 +191,27 @@ def makeCatalogue(nchiselImage,
         capture_output=True,
         text=True
     )
+    else:
+        result = subprocess.run(
+            [
+                "astmkcatalog",
+                nchiselImage,
+                '--zeropoint=%f'%zp,
+                '--ids',
+                '--x',
+                '--y',
+                '--ra',
+                '--dec',
+                '--area',
+                '--magnitude',
+                '--semi-major',
+                '--semi-minor',
+                '--position-angle',
+                '--output=%s'%output
+            ],
+            capture_output=True,
+            text=True
+        )
     if verbose:
         print(result.stdout)
         print(result.stderr)
