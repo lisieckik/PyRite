@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from astropy.cosmology import LambdaCDM
+from astropy.cosmology import LambdaCDM, Planck18
+
 
 cosmo = LambdaCDM(H0 = 70, Om0= 0.3, Ode0= 0.7)
 
@@ -139,6 +140,30 @@ def KoprowskiMS(logM, z, IMF = 'C'):
 
     SFR = sfrMax/(1+M0/10**logM)
     logSFR = np.log10(SFR)
+    if IMF == 'C':
+        return logSFR
+    ValueError('Wrong IMF type! Write it you lazy dong!')
+
+def KoprowskiMS26(logM, z, IMF = 'C'):
+    """
+    Give mass and redshift, get SFR
+    :param M: Log(Mass) in solar masses
+    :param z: Redshift
+    :param IMF: C for chabrier, S for Salpeter, K for Kroupa
+    :return: Log(SFR) in solar masses/yr
+    """
+    aso = 2.002
+    bs0 = 1.270
+    aM0 = 0.789
+    bM0 = 10.072
+    gamma = 1.215
+
+    x = logM
+
+    s0 = as0*np.log10(z) + bs0
+    x0 = aM0*np.log10(z) + bM0
+
+    logSFR = s0 - np.log10*(1+10**(-gamma*(x-x0)))
     if IMF == 'C':
         return logSFR
     ValueError('Wrong IMF type! Write it you lazy dong!')

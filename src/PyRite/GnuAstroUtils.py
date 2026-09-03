@@ -22,6 +22,7 @@ def runNoiseChisel(inputImage,
                    interpnumngb = 15,
                    largeTileSize = 150,
                    tileSize = 30,
+                   minnumfalse = 100,
                    output = 'detected.fits',
                    kernel = '',
                    parameters = '',
@@ -56,7 +57,6 @@ def runNoiseChisel(inputImage,
         if not os.path.exists(kernel):
             prepareKernel()
 
-
     result = subprocess.run(
         [
             "astnoisechisel",
@@ -74,7 +74,8 @@ def runNoiseChisel(inputImage,
             '--outliernumngb=%i'%outliernumngb,
             '--interpnumngb=%i'%interpnumngb,
             '--largetilesize=%i,%i'%(largeTileSize,largeTileSize),
-            '--tilesize=%i,%i'%(tileSize,tileSize)
+            '--tilesize=%i,%i'%(tileSize,tileSize),
+            '--minnumfalse=%i'%minnumfalse
         ],
         capture_output=True,
         text=True
