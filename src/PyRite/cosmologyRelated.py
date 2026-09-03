@@ -152,7 +152,7 @@ def KoprowskiMS26(logM, z, IMF = 'C'):
     :param IMF: C for chabrier, S for Salpeter, K for Kroupa
     :return: Log(SFR) in solar masses/yr
     """
-    aso = 2.002
+    as0 = 2.002
     bs0 = 1.270
     aM0 = 0.789
     bM0 = 10.072
@@ -162,8 +162,7 @@ def KoprowskiMS26(logM, z, IMF = 'C'):
 
     s0 = as0*np.log10(z) + bs0
     x0 = aM0*np.log10(z) + bM0
-
-    logSFR = s0 - np.log10*(1+10**(-gamma*(x-x0)))
+    logSFR = s0 - np.log10(1+10**(-gamma*(x-x0)))
     if IMF == 'C':
         return logSFR
     ValueError('Wrong IMF type! Write it you lazy dong!')
