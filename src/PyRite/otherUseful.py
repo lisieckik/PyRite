@@ -5,6 +5,7 @@ from astropy import units as u
 from astropy.nddata.utils import Cutout2D
 from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
+from astropy.coordinates import SkyCoord
 import json
 from importlib.resources import files
 import subprocess
@@ -73,21 +74,49 @@ def change_image(image):
     stretched /= stretched.max()
     return stretched
 
-def make_cutout(big_image, coord, width_arcsec, output_name, ext = 1):
-    hdu = fits.open(big_image)  # loading the fits file
-    data = hdu[ext].data  # data from the fits file
-    try:
-        header = hdu[1].header  # header information from the fits file (this contains a lot of info like the pixel size, number of pixels, convert pixel values to sky coordinates etc)
-    except:
-        header = hdu[0].header
+def make_cutout(big_image, ra, dec, width_arcsec, output_name, ext=1, verbose = False, removeSIP = False):
+    if isinstance(big_image, str):
+        hdu = fits.open(big_image)
+    else:
+        hdu = big_image
+
+    data = hdu[ext].data
+    header = hdu[ext].header
     header['EXPTIME'] = 1
-    size = u.Quantity([width_arcsec, width_arcsec], u.arcsec)  # defining the width of cutout in astropy
-    wcs = WCS(header)  # information on the pixel to sky coordinate conversion from the header
-    cutout = Cutout2D(data, coord, size, wcs,
-                      fill_value=0)  # Making the cutout from the given data, around the specified coordinates and size
-    cutout_header = cutout.wcs.to_header()  # A new header information after making the cutout (this is because after the cutout, the total number of pixels changed and this changes the pixel to sky coordinate conversion)
-    fits.writeto(output_name, cutout.data, cutout_header,
-                 overwrite=True)  # writing the cutout data to a new fits file with the output filename given above
+    size = u.Quantity([width_arcsec, width_arcsec], u.arcsec)
+    if removeSIP:
+        for key in list(header):
+            if (
+                key.startswith('A_') or
+                key.startswith('B_') or
+                key.startswith('AP_') or
+                key.startswith('BP_')
+                ):
+                del header[key]
+    wcs = WCS(header, relax=True)
+    coord = SkyCoord(
+        ra=ra* u.deg,
+        dec=dec * u.deg,
+    )
+    if verbose:
+        position = wcs.world_to_pixel(coord)
+        print("Image shape:", data.shape)
+        print("Object pixel position:", position)
+
+    cutout = Cutout2D(
+        data,
+        coord,
+        size,
+        wcs,
+        fill_value=0)
+    cutout_header = cutout.wcs.to_header()
+    fits.writeto(
+        output_name,
+        cutout.data,
+        cutout_header,
+        overwrite=True
+    )
+    hdu.close()
 
 def cigale_filters(v=25):
     path = files(__package__) / f"CIGALE{v}_filters_parsed.json"
