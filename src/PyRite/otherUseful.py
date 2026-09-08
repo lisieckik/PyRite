@@ -116,7 +116,8 @@ def make_cutout(big_image, ra, dec, width_arcsec, output_name, ext=1, verbose = 
         cutout_header,
         overwrite=True
     )
-    hdu.close()
+    if isinstance(big_image, str): 
+        hdu.close()
 
 def cigale_filters(v=25):
     path = files(__package__) / f"CIGALE{v}_filters_parsed.json"
@@ -145,3 +146,20 @@ def prepareKernel(kernelFWHM = 2., kernelSize = 5, output = ''):
     )
     print('File created:', output)
     return output
+
+def zoomImage(data, zoom = 2):
+    """
+    :param data:2d numpy array, image 
+    :param zoom: zoom-in parameter
+    :return: xlim, ylim with 1/zoom ratio
+    """
+    xlim = data.shape[0]
+    ylim = data.shape[1]
+    xin = xlim / zoom
+    x0 = int((xlim - xin) / 2)
+    xk = int((xlim + xin) / 2)
+
+    yin = ylim / zoom
+    y0 = int((ylim - yin) / 2)
+    yk = int((ylim + yin) / 2)
+    return (x0,xk), (y0, yk)
