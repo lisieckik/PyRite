@@ -1,7 +1,7 @@
-figure.figsize : 20, 15
+figure.figsize : 9, 6
 figure.dpi : 120
 
-font.size : 45
+font.size : 22
 
 axes.linewidth : 2
 xtick.major.size : 12
@@ -17,8 +17,8 @@ ytick.minor.visible : True
 
 axes.grid : False
 
-lines.linewidth : 5.5
-lines.markersize : 20
+lines.linewidth : 3
+lines.markersize : 10
 
 legend.frameon : True
 legend.loc : best

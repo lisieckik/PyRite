@@ -54,24 +54,42 @@ def jy_to_mag(flux, fluxerr = None):
 def change_image(image):
     """
     Display a galaxy image with automatic astronomical contrast scaling.
-    Only requires the image array.
+    Handles NaN and infinite pixels.
     """
 
+    # Mask non-finite pixels for statistics
+    finite = np.isfinite(image)
+
+    if not np.any(finite):
+        return np.zeros_like(image, dtype=float)
+
     # Robust background estimate
-    mean, median, std = sigma_clipped_stats(image, sigma=3)
+    mean, median, std = sigma_clipped_stats(image[finite], sigma=3)
 
     # Shift background to zero
-    img = image - median
+    img = image.astype(float) - median
+
+    # Non-finite pixels should not affect the display
+    img[~finite] = 0
 
     # Clip negative/background-dominated pixels
     img = np.clip(img, 0, None)
 
     # Robust upper scale
-    vmax = np.percentile(img, 98)
+    vmax = np.percentile(img[finite], 98)
+
+    # Avoid division by zero for completely blank images
+    if vmax <= 0 or not np.isfinite(vmax):
+        return np.zeros_like(img)
 
     # Asinh stretch
     stretched = np.arcsinh(10 * img / vmax)
-    stretched /= stretched.max()
+
+    # Normalize
+    max_stretched = stretched.max()
+    if max_stretched > 0:
+        stretched /= max_stretched
+
     return stretched
 
 def make_cutout(big_image, ra, dec, width_arcsec, output_name, ext=1, verbose = False, removeSIP = False):
