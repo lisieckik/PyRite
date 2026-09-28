@@ -23,11 +23,13 @@ def runNoiseChisel(inputImage,
                    largeTileSize = 150,
                    tileSize = 30,
                    minnumfalse = 100,
+                   meanmedqdiff=1e-2,
                    output = 'detected.fits',
                    kernel = '',
                    parameters = '',
                    h = 1,
-                   verbose = False):
+                   verbose = False,
+                   logFile = None):
     """
     :param inputImage: path to the input map
     :param snquant: GnuAstro docs
@@ -75,7 +77,8 @@ def runNoiseChisel(inputImage,
             '--interpnumngb=%i'%interpnumngb,
             '--largetilesize=%i,%i'%(largeTileSize,largeTileSize),
             '--tilesize=%i,%i'%(tileSize,tileSize),
-            '--minnumfalse=%i'%minnumfalse
+            '--minnumfalse=%i'%minnumfalse,
+            '--meanmedqdiff=%e'%meanmedqdiff
         ],
         capture_output=True,
         text=True
@@ -83,6 +86,9 @@ def runNoiseChisel(inputImage,
     if verbose:
         print(result.stdout)
         print(result.stderr)
+    if logFile != None:
+        #logFile.write(result.stdout)
+        logFile.write(result.stderr)
     print('File created:', output)
     return output
 def prepareUnsharpedImage(inputImage,
@@ -90,7 +96,8 @@ def prepareUnsharpedImage(inputImage,
                     output = 'unsharped_diff_image.fits',
                     keepTempFiles = False,
                     h = 1,
-                    verbose = False):
+                    verbose = False,
+                    logFile = None):
     if kernel =='':
         kernel = 'kernel_%.2f_%i.fits' % (2, 5)
         if not os.path.exists(kernel):
@@ -113,6 +120,9 @@ def prepareUnsharpedImage(inputImage,
     if verbose:
         print(result.stdout)
         print(result.stderr)
+    if logFile != None:
+        #logFile.write(result.stdout)
+        logFile.write(result.stderr)
     print('File created:', 'temp_unsharped.fits')
     result = subprocess.run(
         [
@@ -128,6 +138,9 @@ def prepareUnsharpedImage(inputImage,
         capture_output=True,
         text=True
     )
+    if logFile != None:
+        #logFile.write(result.stdout)
+        logFile.write(result.stderr)
     print('File created:', output)
     if verbose:
         print(result.stdout)
@@ -143,7 +156,8 @@ def segmentNoiseChiselResults(detectedImage,
                               snminarea=15,
                               minskyfrac=0.6,
                               output = 'segmented.fits',
-                              verbose = False
+                              verbose = False,
+                              logFile = None
                               ):
     if kernel =='':
         kernel = 'kernel_%.2f_%i.fits' % (2, 5)
@@ -159,11 +173,14 @@ def segmentNoiseChiselResults(detectedImage,
             '--minriverlength=%i'%minriverlength,
             '--output=%s'%output,
             '--snminarea=%i'%snminarea,
-            '--minskyfrac=%f'%minskyfrac
+            '--minskyfrac=%f'%minskyfrac,
         ],
         capture_output=True,
         text=True
     )
+    if logFile != None:
+        #logFile.write(result.stdout)
+        logFile.write(result.stderr)
     if verbose:
         print(result.stdout)
         print(result.stderr)
@@ -172,7 +189,7 @@ def segmentNoiseChiselResults(detectedImage,
 def makeCatalogue(nchiselImage,
                   zp = 27.99959,
                   output='catalog.fits',
-                  verbose = False,onlySB = False):
+                  verbose = False,onlySB = False, logFile = None):
     if onlySB:
             result = subprocess.run(
         [
@@ -216,3 +233,6 @@ def makeCatalogue(nchiselImage,
     if verbose:
         print(result.stdout)
         print(result.stderr)
+    if logFile != None:
+        #logFile.write(result.stdout)
+        logFile.write(result.stderr)

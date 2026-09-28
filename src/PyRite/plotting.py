@@ -156,7 +156,7 @@ def truncate_colormap(cmap_name, minval=0.0, maxval=1.0, n=256):
     )
     return new_cmap
 
-def showMask(ax, maskFile, maskColor = 'dodgerblue', h = ''):
+def showMask(ax, maskFile, maskColor = 'dodgerblue', h = '', alpha = 1):
     """
     :param ax: axis object on which you want to show the mask
     :param maskFile: if str, opens it with astropy.io.fits, otherwise checks if 2D array
@@ -200,12 +200,12 @@ def showMask(ax, maskFile, maskColor = 'dodgerblue', h = ''):
             colors = [maskColor]*len(levels)
         lws = [1]*len(levels)
     ax.contour(XC, YC, maskToShow.T, levels=levels, colors=colors,
-               linewidths = lws)
+               linewidths = lws, alpha = alpha)
 
 
     maskToShow = np.log10(maskToShow)
     maskToShow[maskToShow>-np.inf] = 1
     Y, X = np.meshgrid(xTick+1, yTick+1)
     ax.pcolormesh(X+0.5, Y+0.5, maskToShow.T,
-                  alpha=0.45, zorder=100,
+                  alpha=alpha/2, zorder=100,
                   cmap='Blues_r')
