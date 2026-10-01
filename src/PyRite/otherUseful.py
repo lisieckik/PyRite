@@ -92,7 +92,7 @@ def change_image(image):
 
     return stretched
 
-def make_cutout(big_image, ra, dec, width_arcsec, output_name, ext=1, verbose = False, removeSIP = False):
+def make_cutout(big_image, ra, dec, width_arcsec, output_name, zerosToNan = False, ext=1, verbose = False, removeSIP = False):
     if isinstance(big_image, str):
         hdu = fits.open(big_image)
     else:
@@ -128,12 +128,25 @@ def make_cutout(big_image, ra, dec, width_arcsec, output_name, ext=1, verbose = 
         wcs,
         fill_value=0)
     cutout_header = cutout.wcs.to_header()
+
+    dataTable = cutout.data
     fits.writeto(
         output_name,
-        cutout.data,
+        dataTable,
         cutout_header,
         overwrite=True
     )
+
+    if zerosToNan:
+        dataTable = fits.open(output_name)[0].data
+        dataTable[dataTable==0] = np.nan
+        
+        fits.writeto(
+        output_name,
+        dataTable,
+        cutout_header,
+        overwrite=True)
+
     if isinstance(big_image, str): 
         hdu.close()
 
