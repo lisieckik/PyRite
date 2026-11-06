@@ -32,23 +32,21 @@ def is_pixel_in_ellipse(image_size, center, a, b, theta, scale = 1, ap = 0):
     return ellipse_mask
 
 def mag_to_jy(mag, mag_err=None):
-    if mag_err== None:
-        flux = 10**((23.9-mag)/2.5)*1e-6
-        flux_err = -99.9
+    flux = 10**((23.9 - np.asarray(mag)) / 2.5) * 1e-6
+    if mag_err is None:
+        flux_err = np.full_like(flux, -99.9, dtype=float)
     else:
-        x = unp.uarray(mag, mag_err)
-        flux = 10**((23.9-x)/2.5)*1e-6
-        flux, flux_err = unp.nominal_values(flux), unp.std_devs(flux)
-    return flux, flux_err
+        flux_err = np.log(10) / 2.5 * flux * np.asarray(mag_err)
 
-def jy_to_mag(flux, fluxerr = None):
-    if fluxerr== None:
-        mag = -2.5*np.log10(flux/1e-6)+23.9
-        mag_err = -99.9
+    return flux, flux_err
+def jy_to_mag(flux, fluxerr=None):
+    flux = np.asarray(flux)
+    mag = -2.5 * np.log10(flux / 1e-6) + 23.9
+    if fluxerr is None:
+        mag_err = np.full_like(mag, -99.9, dtype=float)
     else:
-        x = unp.uarray(flux, fluxerr)
-        mag = -2.5*np.log10(x)+23.9
-        mag, mag_err = unp.nominal_values(mag), unp.std_devs(mag) 
+        mag_err = 2.5 / np.log(10) * np.asarray(fluxerr) / flux
+
     return mag, mag_err
 
 def change_image(image):
